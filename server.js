@@ -20,20 +20,23 @@ app.use('/api/operations', operationsRoutes);
 // Database Connection String Setup
 const mongoURI = process.env.MONGODB_URI || 'mongodb+srv://dipanshu_mib:reMfGYpep1mOMN99@cluster0.p6qtj2b.mongodb.net/showroomHub?retryWrites=true&w=majority';
 
-// Explicit connection configuration options to prevent cloud environment failures
+// Single clean connection logic with server timeout safety
 mongoose.connect(mongoURI, {
   serverSelectionTimeoutMS: 5000
 })
-  .then(() => console.log('✅ MongoDB Database connected successfully.'))
+  .then(() => {
+    console.log('✅ MongoDB Database connected successfully.');
+  })
   .catch((err) => {
     console.error('❌ Database connection error details:', err.message);
-    // Prevents the server from crashing instantly if the database is just slow to respond
   });
-  .catch((err) => console.error('❌ Database connection error:', err));
+
+// Base landing route
 app.get('/', (req, res) => {
   res.send('Showroom & Factory Operations Portal API Server is running...');
 });
 
+// Start listening for network traffic
 app.listen(PORT, () => {
   console.log(`🚀 Server running smoothly on port ${PORT}`);
 });
