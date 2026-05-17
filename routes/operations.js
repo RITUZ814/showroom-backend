@@ -106,5 +106,25 @@ router.get('/visits', async (req, res) => {
     res.status(500).json({ success: false, message: 'Error retrieving visits data.', error: error.message });
   }
 });
+// 6. PATCH: TOGGLE OR COMPLETE AN ACTIVE LEAD FOLLOW-UP STATUS
+router.patch('/visit/:id/followup', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { followUpStatus } = req.body;
 
+    const updatedVisit = await Visit.findByIdAndUpdate(
+      id,
+      { followUpStatus: followUpStatus },
+      { new: true }
+    );
+
+    if (!updatedVisit) {
+      return res.status(404).json({ success: false, message: 'Visitor record not found.' });
+    }
+
+    res.status(200).json({ success: true, message: 'Follow-up metric synced successfully!', data: updatedVisit });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Error updating follow-up status.', error: error.message });
+  }
+});
 module.exports = router;

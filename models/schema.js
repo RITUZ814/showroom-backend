@@ -26,13 +26,18 @@ const UserSchema = new mongoose.Schema({
 const Inventory = mongoose.model('Inventory', InventorySchema);
 const User = mongoose.model('User', UserSchema);
 
-// New Showroom Visit Schema for Customer Analytics
+// New Showroom Visit Schema for Customer Analytics with Follow-up Logic
 const VisitSchema = new mongoose.Schema({
   visitorName: { type: String, required: true },
   mobileNumber: { type: String, required: true },
-  requirement: { type: String, required: true }, // e.g., Bed, Sofa, Dining Table
+  requirement: { type: String, required: true }, 
   comments: { type: String, default: '' },
-  timestamp: { type: Date, default: Date.now }
+  timestamp: { type: Date, default: Date.now },
+  
+  // Follow-up Tracking Additions
+  needsFollowUp: { type: Boolean, default: false },
+  followUpStatus: { type: String, enum: ['Pending', 'Completed', 'None'], default: 'None' },
+  priority: { type: String, enum: ['High', 'Normal', 'None'], default: 'None' }
 }, { timestamps: true, collection: 'showroom_visits' });
 
 const Visit = mongoose.model('Visit', VisitSchema);
