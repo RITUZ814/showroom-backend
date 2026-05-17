@@ -70,5 +70,29 @@ router.post('/transfer', async (req, res) => {
     res.status(500).json({ success: false, message: 'Error executing inventory transfer.', error: error.message });
   }
 });
+// NEW ENDPOINT: DIRECT FACTORY CONSUMPTION / ISSUANCE
+router.post('/deduct', async (req, res) => {
+  try {
+    const { sku, quantityToDeduct } = req.body;
 
+    // Find the item inside the Factory profile
+    const item = await Inventory.findOne({ sku, hub: 'Factory' });
+    
+    if (!item) {
+      return res.status(404).json({ success: false, message: 'Item not found in Factory inventory.' });
+    }
+
+    if (item.quantity < quantityToDeduct) {
+      return res.status(400).json({ success: false, message: 'Insufficient stock reserves.' });
+    }
+
+    // Deduct and save running balance
+    item.quantity -= Number(quantityToDeduct);
+    await item.save();
+
+    res.status(200).json({ success: true, message: 'Stock successfully issued out!', data: item });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Error processing stock deduction.', error: error.message });
+  }
+});
 module.exports = router;
