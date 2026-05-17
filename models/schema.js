@@ -25,5 +25,17 @@ const UserSchema = new mongoose.Schema({
 
 const Inventory = mongoose.model('Inventory', InventorySchema);
 const User = mongoose.model('User', UserSchema);
+// New Showroom Visit Schema for Customer Analytics
+const VisitSchema = new mongoose.Schema({
+  visitorName: { type: String, required: true },
+  mobileNumber: { type: String, required: true },
+  requirement: { type: String, required: true }, // e.g., Bed, Sofa, Dining Table
+  comments: { type: String, default: '' },
+  timestamp: { type: Date, default: Date.now }
+}, { timestamps: true });
 
+const Visit = mongoose.model('Visit', VisitSchema);
+
+// Make sure to add Visit to your exports at the bottom!
+module.exports = { Inventory, User, Visit };
 module.exports = { Inventory, User };

@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { Attendance, Task } = require('../models/schema');
+const { Attendance, Task, Visit } = require('../models/schema');
 
 // 1. CLOCK IN: Captures timestamp and entry GPS location
 router.post('/attendance/clock-in', async (req, res) => {
@@ -71,6 +71,39 @@ router.post('/attendance/clock-out', async (req, res) => {
     res.status(200).json({ success: true, message: 'Tasks updated and shift closed successfully.' });
   } catch (error) {
     res.status(500).json({ success: false, message: 'Error processing clock-out and task batch updates.', error: error.message });
+  }
+});
+
+// ============================================================================
+// ADDITION: NEW FEATURE FOR SHOWROOM WALK-IN VISITOR TRACKING & ANALYTICS
+// ============================================================================
+
+// 4. LOG A NEW SHOWROOM VISIT WALK-IN
+router.post('/visit', async (req, res) => {
+  try {
+    const { visitorName, mobileNumber, requirement, comments } = req.body;
+
+    const newVisit = new Visit({
+      visitorName,
+      mobileNumber,
+      requirement,
+      comments
+    });
+
+    await newVisit.save();
+    res.status(201).json({ success: true, message: 'Visit captured successfully!', data: newVisit });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Error logging showroom visit.', error: error.message });
+  }
+});
+
+// 5. FETCH ALL VISITS FOR TIMELINE LEDGER & ANALYTICS CHARTS
+router.get('/visits', async (req, res) => {
+  try {
+    const visits = await Visit.find().sort({ timestamp: -1 });
+    res.status(200).json({ success: true, data: visits });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Error retrieving visits data.', error: error.message });
   }
 });
 
