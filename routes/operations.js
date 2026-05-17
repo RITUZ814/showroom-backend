@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { Attendance, Task } = require('../models/Schema');
+const { Attendance, Task } = require('../models/schema');
 
 // 1. CLOCK IN: Captures timestamp and entry GPS location
 router.post('/attendance/clock-in', async (req, res) => {
