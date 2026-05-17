@@ -2,97 +2,92 @@ const express = require('express');
 const router = express.Router();
 const { Inventory } = require('../models/schema');
 
-// 1. ADD NEW ITEM TO INVENTORY (Factory or Showroom)
+// 1. ADD NEW STOCK WITH INCOMING TRACKING
 router.post('/add', async (req, res) => {
   try {
-    const { itemName, sku, quantity, hub, userId } = req.body;
-    
+    const { itemName, sku, quantity, hub, operatorName } = req.body;
+    const cleanOperator = operatorName || 'Anonymous Staff';
+    const volume = Number(quantity);
+
+    // Look for existing item with the same SKU in the exact same hub location
+    let item = await Inventory.findOne({ sku, hub });
+
+    if (item) {
+      // If item exists, increase stock volume
+      item.quantity += volume;
+      item.history.push({
+        actionType: 'Incoming',
+        quantity: volume,
+        operatorName: cleanOperator,
+        timestamp: new Date()
+      });
+      await item.save();
+      return res.status(200).json({ success: true, message: `Added ${volume} units to existing SKU record!`, data: item });
+    }
+
+    // Otherwise, create a brand new product card configuration
     const newItem = new Inventory({
       itemName,
       sku,
-      quantity,
-      hub, // Must be 'Factory' or 'Showroom'
-      lastUpdatedBy: userId
+      quantity: volume,
+      hub,
+      history: [{
+        actionType: 'Incoming',
+        quantity: volume,
+        operatorName: cleanOperator,
+        timestamp: new Date()
+      }]
     });
 
     await newItem.save();
-    res.status(201).json({ success: true, message: `Item successfully added to ${hub}!`, data: newItem });
+    res.status(201).json({ success: true, message: `Item successfully created in ${hub}!`, data: newItem });
   } catch (error) {
     res.status(500).json({ success: false, message: 'Error adding item to inventory.', error: error.message });
   }
 });
 
-// 2. GET INVENTORY BY HUB TYPE (Separate view for Factory vs Showroom)
+// 2. GET INVENTORY BY HUB TYPE
 router.get('/hub/:hubName', async (req, res) => {
   try {
-    const { hubName } = req.params; // Expects 'Factory' or 'Showroom'
-    const items = await Inventory.find({ hub: hubName }).populate('lastUpdatedBy', 'name');
+    const { hubName } = req.params;
+    const items = await Inventory.find({ hub: hubName }).sort({ updatedAt: -1 });
     res.status(200).json({ success: true, hub: hubName, data: items });
   } catch (error) {
     res.status(500).json({ success: false, message: 'Error fetching inventory data.', error: error.message });
   }
 });
 
-// 3. TRANSFER STOCK BETWEEN HUB (e.g., Moving finished furniture from Factory to Showroom)
-router.post('/transfer', async (req, res) => {
-  try {
-    const { sku, quantityToTransfer, fromHub, toHub, userId } = req.body;
-
-    // Find item in source hub
-    const sourceItem = await Inventory.findOne({ sku, hub: fromHub });
-    if (!sourceItem || sourceItem.quantity < quantityToTransfer) {
-      return res.status(400).json({ success: false, message: 'Insufficient stock or item not found in source hub.' });
-    }
-
-    // Deduct stock from source hub
-    sourceItem.quantity -= quantityToTransfer;
-    sourceItem.lastUpdatedBy = userId;
-    await sourceItem.save();
-
-    // Check if item already exists in target hub, if yes add quantity, if no create entry
-    let targetItem = await Inventory.findOne({ sku, hub: toHub });
-    if (targetItem) {
-      targetItem.quantity += Number(quantityToTransfer);
-      targetItem.lastUpdatedBy = userId;
-    } else {
-      targetItem = new Inventory({
-        itemName: sourceItem.itemName,
-        sku: sourceItem.sku,
-        quantity: quantityToTransfer,
-        hub: toHub,
-        lastUpdatedBy: userId
-      });
-    }
-    await targetItem.save();
-
-    res.status(200).json({ success: true, message: `Successfully transferred ${quantityToTransfer} items from ${fromHub} to ${toHub}.` });
-  } catch (error) {
-    res.status(500).json({ success: false, message: 'Error executing inventory transfer.', error: error.message });
-  }
-});
-// NEW ENDPOINT: DIRECT FACTORY CONSUMPTION / ISSUANCE
+// 3. DEDUCT / ISSUE OUT STOCK WITH AUDIT SIGNATURE
 router.post('/deduct', async (req, res) => {
   try {
-    const { sku, quantityToDeduct } = req.body;
+    const { sku, quantityToDeduct, operatorName } = req.body;
+    const cleanOperator = operatorName || 'Anonymous Staff';
+    const volume = Number(quantityToDeduct);
 
-    // Find the item inside the Factory profile
     const item = await Inventory.findOne({ sku, hub: 'Factory' });
     
     if (!item) {
       return res.status(404).json({ success: false, message: 'Item not found in Factory inventory.' });
     }
 
-    if (item.quantity < quantityToDeduct) {
-      return res.status(400).json({ success: false, message: 'Insufficient stock reserves.' });
+    if (item.quantity < volume) {
+      return res.status(400).json({ success: false, message: 'Insufficient stock reserves available.' });
     }
 
-    // Deduct and save running balance
-    item.quantity -= Number(quantityToDeduct);
+    // Deduct stock balance and inject the record tracking item
+    item.quantity -= volume;
+    item.history.push({
+      actionType: 'Issued Out',
+      quantity: volume,
+      operatorName: cleanOperator,
+      timestamp: new Date()
+    });
+    
     await item.save();
-
     res.status(200).json({ success: true, message: 'Stock successfully issued out!', data: item });
   } catch (error) {
     res.status(500).json({ success: false, message: 'Error processing stock deduction.', error: error.message });
   }
 });
+
 module.exports = router;
