@@ -32,7 +32,7 @@ const VisitSchema = new mongoose.Schema({
   requirement: { type: String, required: true }, // e.g., Bed, Sofa, Dining Table
   comments: { type: String, default: '' },
   timestamp: { type: Date, default: Date.now }
-}, { timestamps: true, collection: 'ShowroomVisits' }); // <-- Add this explicit collection rule here
+}, { timestamps: true, collection: 'showroom_visits' }); // <-- Add this explicit collection rule here
 
 const Visit = mongoose.model('Visit', VisitSchema);
 
